@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music App | Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .emerald-glow:hover {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <i class="fas fa-music text-white text-xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight">Music<span class="text-emerald-500">Admin</span></h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <input id="adminToken" type="password" placeholder="Paste Admin Token" class="bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all w-48 md:w-64">
+            <button onclick="loadDashboard()" class="bg-emerald-500 hover:bg-emerald-600 px-5 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 text-sm">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </nav>
+
+    <main class="flex-grow p-6 max-w-7xl mx-auto w-full">
+        <!-- Stats Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="glass p-6 rounded-2xl flex items-center gap-5">
+                <div class="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-compact-disc text-blue-500 text-2xl"></i>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-sm font-medium">Total Songs</p>
+                    <h3 id="statTotalSongs" class="text-3xl font-bold">--</h3>
+                </div>
+            </div>
+            <div class="glass p-6 rounded-2xl flex items-center gap-5">
+                <div class="w-14 h-14 bg-emerald-500/20 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-play text-emerald-500 text-2xl"></i>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-sm font-medium">Total Plays</p>
+                    <h3 id="statTotalPlays" class="text-3xl font-bold">--</h3>
+                </div>
+            </div>
+            <div class="glass p-6 rounded-2xl flex items-center gap-5">
+                <div class="w-14 h-14 bg-purple-500/20 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-users text-purple-500 text-2xl"></i>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-sm font-medium">Categories</p>
+                    <h3 id="statCategories" class="text-3xl font-bold">--</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Management Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Left: Add New Song Form -->
+            <div class="lg:col-span-4">
+                <div class="glass p-6 rounded-3xl sticky top-24">
+                    <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <i class="fas fa-plus-circle text-emerald-500"></i> Upload New Track
+                    </h2>
+                    <form id="uploadForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Title</label>
+                            <input name="title" required type="text" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Artist</label>
+                            <input name="artist" required type="text" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-slate-400 mb-1">Genre</label>
+                                <input name="genre" type="text" placeholder="e.g. Pop" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-400 mb-1">Composer</label>
+                                <input name="composer" type="text" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                        </div>
+                        <div class="space-y-3 pt-2">
+                            <label class="block text-sm font-medium text-slate-300">Files</label>
+                            <div class="relative">
+                                <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-700 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/30 transition-all">
+                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <i class="fas fa-music text-slate-500 mb-2"></i>
+                                        <p class="text-xs text-slate-500">Audio File (MP3/WAV)</p>
+                                    </div>
+                                    <input name="audio" type="file" required class="hidden" accept="audio/*" />
+                                </label>
+                            </div>
+                            <div class="relative">
+                                <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-700 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/30 transition-all">
+                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <i class="fas fa-image text-slate-500 mb-2"></i>
+                                        <p class="text-xs text-slate-500">Cover Image</p>
+                                    </div>
+                                    <input name="image" type="file" required class="hidden" accept="image/*" />
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" id="uploadBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 py-4 rounded-2xl font-bold mt-4 shadow-xl shadow-emerald-500/20 transition-all emerald-glow">
+                            Start Upload
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right: Song List -->
+            <div class="lg:col-span-8">
+                <div class="glass rounded-3xl overflow-hidden">
+                    <div class="p-6 border-b border-slate-700 flex justify-between items-center">
+                        <h2 class="text-xl font-bold">Track Library</h2>
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="text" oninput="filterSongs(this.value)" placeholder="Search tracks..." class="bg-slate-800/50 border border-slate-700 rounded-full pl-10 pr-6 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-64">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto custom-scrollbar" style="max-height: 700px;">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-800/30 text-slate-400 text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-6 py-4">Track</th>
+                                    <th class="px-6 py-4">Artist / Composer</th>
+                                    <th class="px-6 py-4">Genre</th>
+                                    <th class="px-6 py-4">Plays</th>
+                                    <th class="px-6 py-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="songsTableBody" class="divide-y divide-slate-800">
+                                <!-- Songs will be loaded here -->
+                            </tbody>
+                        </table>
+                        <div id="loadingOverlay" class="p-20 flex flex-col items-center justify-center gap-4">
+                            <i class="fas fa-circle-notch fa-spin text-4xl text-emerald-500"></i>
+                            <p class="text-slate-400">Loading your music library...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification system -->
+    <div id="toast" class="fixed bottom-6 right-6 translate-y-20 opacity-0 transition-all duration-300 z-[100]">
+        <div id="toastInner" class="bg-slate-800 border border-slate-700 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4">
+            <div id="toastIcon" class="w-8 h-8 rounded-full flex items-center justify-center"></div>
+            <p id="toastMessage" class="font-medium"></p>
+        </div>
+    </div>
+
+    <script>
+        let allSongs = [];
+
+        async function fetchAPI(endpoint, options = {}) {
+            const token = document.getElementById('adminToken').value;
+            const headers = options.headers || {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            
+            const response = await fetch(`/api${endpoint}`, { ...options, headers });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Operation failed');
+            }
+            return response.json();
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const inner = document.getElementById('toastInner');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+
+            msg.innerText = message;
+            if (type === 'success') {
+                icon.innerHTML = '<i class="fas fa-check text-white"></i>';
+                icon.className = 'w-8 h-8 rounded-full flex items-center justify-center bg-emerald-500';
+            } else if (type === 'error') {
+                icon.innerHTML = '<i class="fas fa-exclamation text-white"></i>';
+                icon.className = 'w-8 h-8 rounded-full flex items-center justify-center bg-rose-500';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 4000);
+        }
+
+        async function loadDashboard() {
+            try {
+                document.getElementById('loadingOverlay').classList.remove('hidden');
+                const data = await fetchAPI('/songs');
+                allSongs = data.songs || [];
+                renderSongs(allSongs);
+                updateStats();
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotalSongs').innerText = allSongs.length;
+            const totalPlays = allSongs.reduce((acc, s) => acc + (s.playCount || 0), 0);
+            document.getElementById('statTotalPlays').innerText = totalPlays.toLocaleString();
+            const genres = new Set(allSongs.map(s => s.genre).filter(Boolean));
+            document.getElementById('statCategories').innerText = genres.size;
+        }
+
+        function renderSongs(songs) {
+            const tbody = document.getElementById('songsTableBody');
+            tbody.innerHTML = songs.map(song => `
+                <tr class="hover:bg-slate-800/40 transition-all group">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <img src="${song.coverImageUrl || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-lg object-cover shadow-lg">
+                            <div class="max-w-[150px]">
+                                <p class="font-semibold text-sm truncate">${song.title}</p>
+                                <p class="text-xs text-slate-500 truncate">${song.album || 'No Album'}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <p class="text-sm font-medium">${song.artist}</p>
+                        <p class="text-xs text-slate-500">${song.composer || '-'}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 bg-slate-800 rounded text-[10px] font-bold text-slate-400 uppercase tracking-widest border border-slate-700">${song.genre || 'Misc'}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <p class="text-sm font-mono text-emerald-500">${(song.playCount || 0).toLocaleString()}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="deleteSong('${song._id}')" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterSongs(query) {
+            const filtered = allSongs.filter(s => 
+                s.title.toLowerCase().includes(query.toLowerCase()) || 
+                s.artist.toLowerCase().includes(query.toLowerCase())
+            );
+            renderSongs(filtered);
+        }
+
+        async function deleteSong(id) {
+            if (!confirm('Are you sure you want to remove this track?')) return;
+            try {
+                await fetchAPI(`/songs/${id}`, { method: 'DELETE' });
+                showToast('Song removed successfully', 'success');
+                loadDashboard();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        document.getElementById('uploadForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('uploadBtn');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Uploading...';
+
+            try {
+                const formData = new FormData(e.target);
+                const token = document.getElementById('adminToken').value;
+                const response = await fetch('/api/songs', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Upload failed. Check your token.');
+                
+                showToast('New song uploaded successfully!', 'success');
+                e.target.reset();
+                loadDashboard();
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        };
+
+        // Initial load
+        window.onload = loadDashboard;
+    </script>
+</body>
+</html>

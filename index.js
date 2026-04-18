@@ -1,5 +1,6 @@
 require('dotenv').config({ override: true });
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -21,7 +22,16 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for easier development/CDN usage
+}));
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
