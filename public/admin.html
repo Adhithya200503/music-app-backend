@@ -137,8 +137,9 @@
                             <input name="title" required type="text" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
                         <div>
-                            <label class="block text-sm text-slate-400 mb-1">Artist</label>
-                            <input name="artist" required type="text" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <label class="block text-sm text-slate-400 mb-1">Actor (Artist)</label>
+                            <input name="artist" id="artistInput" required type="text" list="actorSuggestions" placeholder="e.g. Dhiyanesh" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <datalist id="actorSuggestions"></datalist>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -147,7 +148,8 @@
                             </div>
                             <div>
                                 <label class="block text-sm text-slate-400 mb-1">Composer</label>
-                                <input name="composer" type="text" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <input name="composer" id="composerInput" type="text" list="composerSuggestions" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <datalist id="composerSuggestions"></datalist>
                             </div>
                         </div>
                         <div class="space-y-3 pt-2">
@@ -193,7 +195,7 @@
                             <thead class="bg-slate-800/30 text-slate-400 text-xs uppercase tracking-wider">
                                 <tr>
                                     <th class="px-6 py-4">Track</th>
-                                    <th class="px-6 py-4">Artist / Composer</th>
+                                    <th class="px-6 py-4">Actor / Composer</th>
                                     <th class="px-6 py-4">Genre</th>
                                     <th class="px-6 py-4">Plays</th>
                                     <th class="px-6 py-4">Action</th>
@@ -345,6 +347,13 @@
             document.getElementById('statTotalPlays').innerText = totalPlays.toLocaleString();
             const genres = new Set(allSongs.map(s => s.genre).filter(Boolean));
             document.getElementById('statCategories').innerText = genres.size;
+
+            // Update suggestions
+            const actors = [...new Set(allSongs.map(s => s.artist).filter(Boolean))];
+            const composers = [...new Set(allSongs.map(s => s.composer).filter(Boolean))];
+            
+            document.getElementById('actorSuggestions').innerHTML = actors.map(a => `<option value="${a}">`).join('');
+            document.getElementById('composerSuggestions').innerHTML = composers.map(c => `<option value="${c}">`).join('');
         }
 
         function renderSongs(songs) {
@@ -407,6 +416,7 @@
 
             try {
                 const formData = new FormData(e.target);
+                const songTitle = formData.get('title');
                 const response = await fetch('/api/songs', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${authToken}` },
@@ -420,7 +430,7 @@
 
                 if (!response.ok) throw new Error('Upload failed. Check if you are an admin.');
                 
-                showToast('New song uploaded successfully!', 'success');
+                showToast(`Successfully added "${songTitle}" with its image!`, 'success');
                 e.target.reset();
                 loadDashboard();
             } catch (err) {
