@@ -215,11 +215,12 @@ exports.getGenres = async (req, res, next) => {
 // @access  Public
 exports.getSongsByFilter = async (req, res, next) => {
   try {
-    const { composer, genre, artist } = req.query;
+    const { composer, genre, artist, album } = req.query;
     const filter = {};
     if (composer) filter.composer = composer;
     if (genre) filter.genre = genre;
     if (artist) filter.artist = artist;
+    if (album) filter.album = album;
     const songs = await Song.find(filter).sort({ createdAt: -1 });
     res.json(songs);
   } catch (error) {

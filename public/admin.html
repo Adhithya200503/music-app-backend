@@ -141,6 +141,11 @@
                             <input name="artist" id="artistInput" required type="text" list="actorSuggestions" placeholder="e.g. Dhiyanesh" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                             <datalist id="actorSuggestions"></datalist>
                         </div>
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Movie (Album)</label>
+                            <input name="album" id="movieInput" type="text" list="movieSuggestions" placeholder="e.g. Master" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <datalist id="movieSuggestions"></datalist>
+                        </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm text-slate-400 mb-1">Genre</label>
@@ -351,9 +356,11 @@
             // Update suggestions
             const actors = [...new Set(allSongs.map(s => s.artist).filter(Boolean))];
             const composers = [...new Set(allSongs.map(s => s.composer).filter(Boolean))];
+            const movies = [...new Set(allSongs.map(s => s.album).filter(Boolean))];
             
             document.getElementById('actorSuggestions').innerHTML = actors.map(a => `<option value="${a}">`).join('');
             document.getElementById('composerSuggestions').innerHTML = composers.map(c => `<option value="${c}">`).join('');
+            document.getElementById('movieSuggestions').innerHTML = movies.map(m => `<option value="${m}">`).join('');
         }
 
         function renderSongs(songs) {
