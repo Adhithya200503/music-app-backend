@@ -1,6 +1,17 @@
 const Song = require('../models/Song');
 const cloudinary = require('../config/cloudinary');
 
+// Helper to normalize song URLs
+const normalizeSong = (song) => {
+  if (!song) return song;
+  const songObj = song.toObject ? song.toObject() : song;
+  
+  // If it's a Cloudinary URL or already absolute, leave it
+  // Otherwise, we might need to prepend the server URL if we ever support local uploads
+  // For now, we just ensure it's a string
+  return songObj;
+};
+
 // @desc    Upload new song
 // @route   POST /api/songs
 // @access  Private/Admin
@@ -56,7 +67,9 @@ exports.getSongs = async (req, res, next) => {
       .skip(pageSize * (page - 1))
       .sort({ createdAt: -1 });
 
-    res.json({ songs, page, pages: Math.ceil(count / pageSize), total: count });
+    const normalizedSongs = songs.map(normalizeSong);
+
+    res.json({ songs: normalizedSongs, page, pages: Math.ceil(count / pageSize), total: count });
   } catch (error) {
     next(error);
   }
@@ -72,7 +85,7 @@ exports.getSongById = async (req, res, next) => {
       res.status(404);
       throw new Error('Song not found');
     }
-    res.json(song);
+    res.json(normalizeSong(song));
   } catch (error) {
     next(error);
   }
@@ -129,7 +142,7 @@ exports.deleteSong = async (req, res, next) => {
 exports.getTrendingSongs = async (req, res, next) => {
   try {
     const songs = await Song.find().sort({ playCount: -1 }).limit(10);
-    res.json(songs);
+    res.json(songs.map(normalizeSong));
   } catch (error) {
     next(error);
   }
@@ -167,7 +180,7 @@ exports.getRecommendations = async (req, res, next) => {
       recommendations.push(...trending);
     }
 
-    res.json(recommendations);
+    res.json(recommendations.map(normalizeSong));
   } catch (error) {
     next(error);
   }
@@ -202,10 +215,11 @@ exports.getGenres = async (req, res, next) => {
 // @access  Public
 exports.getSongsByFilter = async (req, res, next) => {
   try {
-    const { composer, genre } = req.query;
+    const { composer, genre, artist } = req.query;
     const filter = {};
     if (composer) filter.composer = composer;
     if (genre) filter.genre = genre;
+    if (artist) filter.artist = artist;
     const songs = await Song.find(filter).sort({ createdAt: -1 });
     res.json(songs);
   } catch (error) {

@@ -34,9 +34,39 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #475569;
         }
+        #loginOverlay {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
+    <!-- Login Overlay -->
+    <div id="loginOverlay" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center p-6">
+        <div class="glass max-w-md w-full p-8 rounded-3xl shadow-2xl border border-slate-800">
+            <div class="flex flex-col items-center mb-8">
+                <div class="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-4">
+                    <i class="fas fa-lock text-white text-3xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold">Admin Login</h1>
+                <p class="text-slate-400 text-sm mt-2 text-center">Enter your credentials to manage the music library</p>
+            </div>
+            
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Email Address</label>
+                    <input id="loginEmail" required type="email" placeholder="admin@example.com" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">Password</label>
+                    <input id="loginPassword" required type="password" placeholder="••••••••" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
+                </div>
+                <button type="submit" id="loginBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 py-4 rounded-xl font-bold mt-6 shadow-xl shadow-emerald-500/20 transition-all emerald-glow">
+                    Sign In
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Navbar -->
     <nav class="glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-3">
@@ -46,7 +76,15 @@
             <h1 class="text-2xl font-bold tracking-tight">Music<span class="text-emerald-500">Admin</span></h1>
         </div>
         <div class="flex items-center gap-4">
-            <input id="adminToken" type="password" placeholder="Paste Admin Token" class="bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all w-48 md:w-64">
+            <div id="userInfo" class="hidden md:flex items-center gap-3 mr-4">
+                <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+                    <i class="fas fa-user text-xs text-emerald-500"></i>
+                </div>
+                <span id="userNameDisplay" class="text-sm font-medium text-slate-300">Admin User</span>
+            </div>
+            <button onclick="logout()" class="bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-500 px-4 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 text-sm border border-slate-700">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
             <button onclick="loadDashboard()" class="bg-emerald-500 hover:bg-emerald-600 px-5 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 text-sm">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
@@ -185,13 +223,32 @@
 
     <script>
         let allSongs = [];
+        let authToken = localStorage.getItem('admin_auth_token');
+
+        // Check auth on load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!authToken) {
+                document.getElementById('loginOverlay').classList.remove('hidden');
+                document.getElementById('loginOverlay').classList.add('flex');
+            } else {
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+                document.getElementById('userNameDisplay').innerText = localStorage.getItem('admin_user_name') || 'Admin';
+                loadDashboard();
+            }
+        });
 
         async function fetchAPI(endpoint, options = {}) {
-            const token = document.getElementById('adminToken').value;
             const headers = options.headers || {};
-            if (token) headers['Authorization'] = `Bearer ${token}`;
+            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
             
             const response = await fetch(`/api${endpoint}`, { ...options, headers });
+            
+            if (response.status === 401) {
+                logout();
+                throw new Error('Session expired. Please login again.');
+            }
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || 'Operation failed');
@@ -201,7 +258,6 @@
 
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
-            const inner = document.getElementById('toastInner');
             const icon = document.getElementById('toastIcon');
             const msg = document.getElementById('toastMessage');
 
@@ -218,7 +274,58 @@
             setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 4000);
         }
 
+        // Login Handler
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Checking...';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Login failed');
+                
+                if (data.role !== 'admin') {
+                    throw new Error('Access denied. You are not an admin.');
+                }
+
+                localStorage.setItem('admin_auth_token', data.token);
+                localStorage.setItem('admin_user_name', data.username);
+                authToken = data.token;
+
+                document.getElementById('loginOverlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loginOverlay').classList.add('hidden');
+                    document.getElementById('userInfo').classList.remove('hidden');
+                    document.getElementById('userNameDisplay').innerText = data.username;
+                    loadDashboard();
+                }, 400);
+
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Sign In';
+            }
+        };
+
+        function logout() {
+            localStorage.removeItem('admin_auth_token');
+            localStorage.removeItem('admin_user_name');
+            location.reload();
+        }
+
         async function loadDashboard() {
+            if (!authToken) return;
             try {
                 document.getElementById('loadingOverlay').classList.remove('hidden');
                 const data = await fetchAPI('/songs');
@@ -300,14 +407,18 @@
 
             try {
                 const formData = new FormData(e.target);
-                const token = document.getElementById('adminToken').value;
                 const response = await fetch('/api/songs', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
+                    headers: { 'Authorization': `Bearer ${authToken}` },
                     body: formData
                 });
 
-                if (!response.ok) throw new Error('Upload failed. Check your token.');
+                if (response.status === 401) {
+                    logout();
+                    throw new Error('Session expired. Please login again.');
+                }
+
+                if (!response.ok) throw new Error('Upload failed. Check if you are an admin.');
                 
                 showToast('New song uploaded successfully!', 'success');
                 e.target.reset();
@@ -319,9 +430,6 @@
                 btn.innerText = originalText;
             }
         };
-
-        // Initial load
-        window.onload = loadDashboard;
     </script>
 </body>
 </html>
