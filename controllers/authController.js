@@ -79,7 +79,9 @@ exports.loginUser = async (req, res, next) => {
 // @access  Private
 exports.getUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).populate('favorites').populate('recentlyPlayed');
+    const user = await User.findById(req.user.id)
+      .populate({ path: 'favorites', populate: { path: 'album' } })
+      .populate({ path: 'recentlyPlayed', populate: { path: 'album' } });
     if (user) {
       res.json(user);
     } else {
