@@ -156,12 +156,13 @@
                         <div class="space-y-3 pt-2">
                             <label class="block text-sm font-medium text-slate-300">Cover Image</label>
                             <div class="relative">
-                                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-700 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/30 transition-all">
-                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <label id="imageUploadLabel" class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-700 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/30 transition-all overflow-hidden relative">
+                                    <div id="imageUploadContent" class="flex flex-col items-center justify-center pt-5 pb-6 transition-all">
                                         <i class="fas fa-image text-slate-500 mb-2 text-2xl"></i>
                                         <p class="text-xs text-slate-500">Upload Album Cover</p>
                                     </div>
-                                    <input name="image" type="file" required class="hidden" accept="image/*" />
+                                    <img id="imagePreview" class="hidden absolute inset-0 w-full h-full object-cover z-10" />
+                                    <input name="image" id="imageInput" type="file" required class="hidden" accept="image/*" onchange="previewImage(event)" />
                                 </label>
                             </div>
                         </div>
@@ -185,12 +186,15 @@
                         <div class="space-y-3 pt-2">
                             <label class="block text-sm font-medium text-slate-300">Audio File</label>
                             <div class="relative">
-                                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-700 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/30 transition-all">
-                                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <label id="audioUploadLabel" class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-700 border-dashed rounded-xl cursor-pointer hover:bg-slate-800/30 transition-all relative overflow-hidden">
+                                    <div id="audioUploadContent" class="flex flex-col items-center justify-center pt-5 pb-6 transition-all">
                                         <i class="fas fa-music text-slate-500 mb-2 text-2xl"></i>
-                                        <p class="text-xs text-slate-500">Audio File (MP3/WAV)</p>
+                                        <p id="audioFileName" class="text-xs text-slate-500 mt-2 truncate max-w-[200px]">Audio File (MP3/WAV)</p>
                                     </div>
-                                    <input name="audio" type="file" required class="hidden" accept="audio/*" />
+                                    <div id="audioPreviewContainer" class="hidden absolute bottom-2 w-full px-4 z-10">
+                                        <audio id="audioPreview" controls class="w-full h-8"></audio>
+                                    </div>
+                                    <input name="audio" id="audioInput" type="file" required class="hidden" accept="audio/*" onchange="previewAudio(event)" />
                                 </label>
                             </div>
                         </div>
@@ -206,9 +210,14 @@
                 <div class="glass rounded-3xl overflow-hidden">
                     <div class="p-6 border-b border-slate-700 flex justify-between items-center">
                         <h2 class="text-xl font-bold">Track Library</h2>
-                        <div class="relative">
-                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-                            <input type="text" oninput="filterSongs(this.value)" placeholder="Search tracks..." class="bg-slate-800/50 border border-slate-700 rounded-full pl-10 pr-6 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-64">
+                        <div class="flex items-center gap-4">
+                            <select id="filterAlbumSelect" onchange="applyFilters()" class="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-200">
+                                <option value="">All Albums</option>
+                            </select>
+                            <div class="relative">
+                                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                                <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Search tracks..." class="bg-slate-800/50 border border-slate-700 rounded-full pl-10 pr-6 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-64">
+                            </div>
                         </div>
                     </div>
                     <div class="overflow-x-auto custom-scrollbar" style="max-height: 700px;">
@@ -386,12 +395,16 @@
 
         function updateAlbumDropdown() {
             const select = document.getElementById('albumSelect');
+            const filterSelect = document.getElementById('filterAlbumSelect');
+            
             if (allAlbums.length === 0) {
                 select.innerHTML = '<option value="">No albums available. Create one first.</option>';
+                filterSelect.innerHTML = '<option value="">All Albums</option>';
                 return;
             }
-            select.innerHTML = '<option value="">Select an Album...</option>' + 
-                allAlbums.map(a => `<option value="${a._id}">${a.title} (${a.composer})</option>`).join('');
+            const options = allAlbums.map(a => `<option value="${a._id}">${a.title} (${a.composer})</option>`).join('');
+            select.innerHTML = '<option value="">Select an Album...</option>' + options;
+            filterSelect.innerHTML = '<option value="">All Albums</option>' + options;
         }
 
         function updateStats() {
@@ -433,13 +446,19 @@
             }).join('');
         }
 
-        function filterSongs(query) {
-            const lowerQuery = query.toLowerCase();
+        function applyFilters() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const albumId = document.getElementById('filterAlbumSelect').value;
+            
             const filtered = allSongs.filter(s => {
-                const titleMatch = s.title && s.title.toLowerCase().includes(lowerQuery);
-                const albumMatch = s.album && s.album.title && s.album.title.toLowerCase().includes(lowerQuery);
-                const composerMatch = s.album && s.album.composer && s.album.composer.toLowerCase().includes(lowerQuery);
-                return titleMatch || albumMatch || composerMatch;
+                const titleMatch = s.title && s.title.toLowerCase().includes(query);
+                const albumTitleMatch = s.album && s.album.title && s.album.title.toLowerCase().includes(query);
+                const composerMatch = s.album && s.album.composer && s.album.composer.toLowerCase().includes(query);
+                
+                const matchesSearch = titleMatch || albumTitleMatch || composerMatch;
+                const matchesAlbum = albumId === "" || (s.album && s.album._id === albumId);
+                
+                return matchesSearch && matchesAlbum;
             });
             renderSongs(filtered);
         }
@@ -481,6 +500,9 @@
                 
                 showToast(`Successfully created album "${title}"`, 'success');
                 e.target.reset();
+                document.getElementById('imagePreview').classList.add('hidden');
+                document.getElementById('imagePreview').src = '';
+                document.getElementById('imageUploadContent').classList.remove('opacity-0');
                 loadDashboard();
                 switchTab('song'); // switch to song tab to upload easily
             } catch (err) {
@@ -517,6 +539,10 @@
                 
                 showToast(`Successfully added track "${songTitle}"`, 'success');
                 e.target.reset();
+                document.getElementById('audioPreviewContainer').classList.add('hidden');
+                document.getElementById('audioPreview').src = '';
+                document.getElementById('audioFileName').innerText = 'Audio File (MP3/WAV)';
+                document.getElementById('audioUploadContent').classList.remove('-translate-y-4');
                 loadDashboard();
             } catch (err) {
                 showToast(err.message, 'error');
@@ -525,6 +551,38 @@
                 btn.innerText = originalText;
             }
         };
+
+        function previewImage(event) {
+            const input = event.target;
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    const content = document.getElementById('imageUploadContent');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    content.classList.add('opacity-0');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function previewAudio(event) {
+            const input = event.target;
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const url = URL.createObjectURL(file);
+                const preview = document.getElementById('audioPreview');
+                const container = document.getElementById('audioPreviewContainer');
+                const content = document.getElementById('audioUploadContent');
+                const fileName = document.getElementById('audioFileName');
+                
+                preview.src = url;
+                container.classList.remove('hidden');
+                fileName.innerText = file.name;
+                content.classList.add('-translate-y-4');
+            }
+        }
     </script>
 </body>
 </html>
