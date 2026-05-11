@@ -12,6 +12,7 @@ const authRoutes = require('./routes/authRoutes');
 const songRoutes = require('./routes/songRoutes');
 const playlistRoutes = require('./routes/playlistRoutes');
 const userRoutes = require('./routes/userRoutes');
+const albumRoutes = require('./routes/albumRoutes');
 
 // Connect to database
 connectDB();
@@ -40,6 +41,7 @@ if (process.env.NODE_ENV === 'development') {
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/songs', songRoutes);
+app.use('/api/albums', albumRoutes);
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/users', userRoutes);
 

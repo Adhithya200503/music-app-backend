@@ -12,7 +12,7 @@ router.get('/filter', getSongsByFilter);
 
 router.route('/')
   .get(getSongs)
-  .post(protect, admin, upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'image', maxCount: 1 }]), uploadSong);
+  .post(protect, admin, upload.fields([{ name: 'audio', maxCount: 1 }]), uploadSong);
 
 router.route('/:id')
   .get(getSongById)

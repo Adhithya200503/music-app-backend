@@ -1,14 +1,11 @@
 const Song = require('../models/Song');
+const Album = require('../models/Album');
 const cloudinary = require('../config/cloudinary');
 
 // Helper to normalize song URLs
 const normalizeSong = (song) => {
   if (!song) return song;
   const songObj = song.toObject ? song.toObject() : song;
-  
-  // If it's a Cloudinary URL or already absolute, leave it
-  // Otherwise, we might need to prepend the server URL if we ever support local uploads
-  // For now, we just ensure it's a string
   return songObj;
 };
 
@@ -22,21 +19,23 @@ exports.uploadSong = async (req, res, next) => {
       throw new Error('Please upload an audio file');
     }
 
-    const { title, artist, album, composer, genre, duration } = req.body;
-    let coverImageUrl = '';
-    
-    if (req.files.image && req.files.image.length > 0) {
-      coverImageUrl = req.files.image[0].path;
+    const { title, albumId, duration } = req.body;
+
+    if (!title || !albumId) {
+      res.status(400);
+      throw new Error('Please provide title and albumId');
+    }
+
+    const album = await Album.findById(albumId);
+    if (!album) {
+      res.status(404);
+      throw new Error('Album not found');
     }
 
     const song = await Song.create({
       title,
-      artist,
-      album,
-      composer,
-      genre,
-      duration,
-      coverImageUrl,
+      album: albumId,
+      duration: duration || 0,
       audioUrl: req.files.audio[0].path,
       cloudinaryId: req.files.audio[0].filename // This holds the Cloudinary public_id
     });
@@ -63,6 +62,7 @@ exports.getSongs = async (req, res, next) => {
 
     const count = await Song.countDocuments({ ...keyword });
     const songs = await Song.find({ ...keyword })
+      .populate('album')
       .limit(pageSize)
       .skip(pageSize * (page - 1))
       .sort({ createdAt: -1 });
@@ -80,7 +80,7 @@ exports.getSongs = async (req, res, next) => {
 // @access  Public
 exports.getSongById = async (req, res, next) => {
   try {
-    const song = await Song.findById(req.params.id);
+    const song = await Song.findById(req.params.id).populate('album');
     if (!song) {
       res.status(404);
       throw new Error('Song not found');
@@ -125,7 +125,7 @@ exports.deleteSong = async (req, res, next) => {
 
     // Delete from Cloudinary
     if (song.cloudinaryId) {
-      await cloudinary.uploader.destroy(song.cloudinaryId, { resource_type: 'video' }); // audio is treated as video resource type for deletion in cloudinary
+      await cloudinary.uploader.destroy(song.cloudinaryId, { resource_type: 'video' });
     }
 
     await song.deleteOne();
@@ -141,41 +141,50 @@ exports.deleteSong = async (req, res, next) => {
 // @access  Public
 exports.getTrendingSongs = async (req, res, next) => {
   try {
-    const songs = await Song.find().sort({ playCount: -1 }).limit(10);
+    const songs = await Song.find().populate('album').sort({ playCount: -1 }).limit(10);
     res.json(songs.map(normalizeSong));
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get smart recommendations based on recently played genres
+// @desc    Get smart recommendations based on recently played composers
 // @route   GET /api/songs/recommendations
 // @access  Private
 exports.getRecommendations = async (req, res, next) => {
   try {
-    const user = await require('../models/User').findById(req.user._id).populate('recentlyPlayed');
+    const user = await require('../models/User').findById(req.user._id).populate({
+      path: 'recentlyPlayed',
+      populate: { path: 'album' }
+    });
     
     if (!user || user.recentlyPlayed.length === 0) {
       // Return popular songs if no history
-      const songs = await Song.find().sort({ playCount: -1 }).limit(10);
+      const songs = await Song.find().populate('album').sort({ playCount: -1 }).limit(10);
       return res.json(songs);
     }
 
-    // Extract genres from recently played
-    const genres = user.recentlyPlayed.map(song => song.genre).filter(Boolean);
-    const uniqueGenres = [...new Set(genres)];
+    // Extract composers from recently played albums
+    const composers = user.recentlyPlayed
+      .map(song => song.album?.composer)
+      .filter(Boolean);
+    const uniqueComposers = [...new Set(composers)];
+
+    // Find albums with these composers
+    const recommendedAlbums = await Album.find({ composer: { $in: uniqueComposers } });
+    const albumIds = recommendedAlbums.map(a => a._id);
 
     const recommendations = await Song.find({
-      genre: { $in: uniqueGenres },
+      album: { $in: albumIds },
       _id: { $nin: user.recentlyPlayed.map(s => s._id) }
-    }).limit(10);
+    }).populate('album').limit(10);
 
     // If still not enough, pad with trending
     if (recommendations.length < 10) {
       const needed = 10 - recommendations.length;
       const trending = await Song.find({
         _id: { $nin: [...user.recentlyPlayed.map(s => s._id), ...recommendations.map(s => s._id)] }
-      }).sort({ playCount: -1 }).limit(needed);
+      }).populate('album').sort({ playCount: -1 }).limit(needed);
       
       recommendations.push(...trending);
     }
@@ -191,37 +200,43 @@ exports.getRecommendations = async (req, res, next) => {
 // @access  Public
 exports.getComposers = async (req, res, next) => {
   try {
-    const composers = await Song.distinct('composer', { composer: { $ne: null, $ne: '' } });
+    const composers = await Album.distinct('composer', { composer: { $ne: null, $ne: '' } });
     res.json(composers.filter(Boolean));
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get distinct genres
+// @desc    Get distinct genres (deprecated, returning empty)
 // @route   GET /api/songs/genres
 // @access  Public
 exports.getGenres = async (req, res, next) => {
-  try {
-    const genres = await Song.distinct('genre', { genre: { $ne: null, $ne: '' } });
-    res.json(genres.filter(Boolean));
-  } catch (error) {
-    next(error);
-  }
+  res.json([]);
 };
 
-// @desc    Get songs filtered by composer or genre
-// @route   GET /api/songs/filter?composer=X or ?genre=Y
+// @desc    Get songs filtered by composer or album
+// @route   GET /api/songs/filter?composer=X or ?album=Y
 // @access  Public
 exports.getSongsByFilter = async (req, res, next) => {
   try {
-    const { composer, genre, artist, album } = req.query;
-    const filter = {};
-    if (composer) filter.composer = composer;
-    if (genre) filter.genre = genre;
-    if (artist) filter.artist = artist;
-    if (album) filter.album = album;
-    const songs = await Song.find(filter).sort({ createdAt: -1 });
+    const { composer, album } = req.query;
+    
+    let filter = {};
+    if (album) {
+      // album here is album title or id
+      // Assume id for simplicity, or find album by title
+      // We will handle it in the frontend to pass album id if needed, 
+      // but let's support querying by album title
+      const albums = await Album.find({ title: { $regex: album, $options: 'i' } });
+      filter.album = { $in: albums.map(a => a._id) };
+    }
+    
+    if (composer) {
+      const albums = await Album.find({ composer: { $regex: composer, $options: 'i' } });
+      filter.album = { $in: albums.map(a => a._id) };
+    }
+
+    const songs = await Song.find(filter).populate('album').sort({ createdAt: -1 });
     res.json(songs);
   } catch (error) {
     next(error);

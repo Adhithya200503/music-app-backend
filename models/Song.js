@@ -5,18 +5,10 @@ const songSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add a title']
   },
-  artist: {
-    type: String,
-    required: [true, 'Please add an artist']
-  },
   album: {
-    type: String
-  },
-  composer: {
-    type: String
-  },
-  genre: {
-    type: String
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Album',
+    required: true
   },
   duration: {
     type: Number, // duration in seconds
@@ -30,9 +22,6 @@ const songSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  coverImageUrl: {
-    type: String
-  },
   playCount: {
     type: Number,
     default: 0
@@ -42,6 +31,6 @@ const songSchema = new mongoose.Schema({
 });
 
 // Index for search
-songSchema.index({ title: 'text', artist: 'text', album: 'text' });
+songSchema.index({ title: 'text' });
 
 module.exports = mongoose.model('Song', songSchema);
